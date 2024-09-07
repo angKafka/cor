@@ -1,11 +1,16 @@
-package org.rdutta.identitymanager.dto.req_obj;
+package org.rdutta.identitymanager.dao.features;
 
+import lombok.*;
 import org.rdutta.identitymanager.dto.sso_dto.EmployeeRequest;
+import java.util.UUID;
 
-import java.time.LocalDateTime;
-
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
 public class ProfileManagement {
     private String operation;
     private EmployeeRequest employeeRequest;
-    private LocalDateTime signedInTime;
+    private UUID employeeId;
 }

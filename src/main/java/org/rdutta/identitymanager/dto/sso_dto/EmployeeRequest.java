@@ -1,4 +1,4 @@
-package org.rdutta.identitymanager.dto;
+package org.rdutta.identitymanager.dto.sso_dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;

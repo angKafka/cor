@@ -1,23 +1,25 @@
-package org.rdutta.identitymanager.handler.implementation;
+package org.rdutta.identitymanager.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.rdutta.identitymanager.dao.features.ProfileManagement;
-import org.rdutta.identitymanager.dto.sso_dto.EmployeeRequest;
-import org.rdutta.identitymanager.handler.CRUDHandler;
-import org.rdutta.identitymanager.handler.EmployeeHandler;
-import org.rdutta.identitymanager.mapper.Mapper;
+import org.rdutta.identitymanager.exceptions.EmployeeException;
+import org.rdutta.identitymanager.exceptions.ErrorMessages;
 import org.rdutta.identitymanager.model.Employee;
-import org.rdutta.identitymanager.repository.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.rdutta.identitymanager.service.EmployeeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class UserCrudHandler implements CRUDHandler {
-    private CRUDHandler nextHandler;
 
-    private final EmployeeRepository empRepository;
-    private final Mapper mapper;
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserCrudHandler.class);
+
+    private CRUDHandler nextHandler;
+    private final EmployeeService employeeService;
 
     @Override
     public void setNext(CRUDHandler next) {
@@ -25,33 +27,44 @@ public class UserCrudHandler implements CRUDHandler {
     }
 
     @Override
-    public void handle(ProfileManagement management) throws Exception {
-        switch (management.getOperation()) {
-            case "CREATE":
-                Employee employee = mapper.toEmployee(management.getEmployeeRequest());
-                empRepository.save(employee);
-                System.out.println("Employee Created");
-                break;
-            case "READ":
-                empRepository.findById(management);
-                System.out.println("User Retrieved");
-                break;
-            case "UPDATE":
-                User user = userRepository.findById(request.getUserId()).orElseThrow(() -> new RuntimeException("User not found"));
-                user.setUsername(request.getUser().getUsername());
-                user.setEmail(request.getUser().getEmail());
-                userRepository.save(user);
-                System.out.println("User Updated");
-                break;
-            case "DELETE":
-                userRepository.deleteById(request.getUserId());
-                System.out.println("User Deleted");
-                break;
-            default:
-                throw new RuntimeException("Invalid Operation");
+    public Object handle(ProfileManagement management) throws Exception {
+        Object response = null;
+        try {
+            switch (management.getOperation()) {
+                case "CREATE":
+                    UUID createdEmployeeId = employeeService.createEmployee(management.getEmployeeRequest());
+                    LOGGER.info("Employee Created with ID: {}", createdEmployeeId);
+                    response = createdEmployeeId;
+                    break;
+                case "READ":
+                    Employee employee = employeeService.getEmployee(String.valueOf(management.getEmployeeId()));
+                    LOGGER.info("Employee Retrieved: {}", employee);
+                    response = employee;
+                    break;
+                case "UPDATE":
+                    employeeService.updateEmployee(management.getEmployeeId(), management.getEmployeeRequest());
+                    LOGGER.info("Employee Updated");
+                    response = "Employee Updated Successfully";
+                    break;
+                case "DELETE":
+                    employeeService.deleteEmployee(management.getEmployeeId());
+                    LOGGER.info("Employee Deleted");
+                    response = "Employee Deleted Successfully";
+                    break;
+                default:
+                    throw new EmployeeException(ErrorMessages.INVALID_OPERATION);
+            }
+        } catch (EmployeeException e) {
+            LOGGER.error("Error handling operation {} for employee ID {}: {}",
+                    management.getOperation(),
+                    management.getEmployeeId(),
+                    e.getMessage());
+            throw e;
         }
+
         if (nextHandler != null) {
-            nextHandler.handle(management);
+            response = nextHandler.handle(management);
         }
+        return response;
     }
 }
